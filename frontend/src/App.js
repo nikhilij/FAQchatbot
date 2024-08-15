@@ -18,7 +18,7 @@ function App() {
     setError('');
 
     try {
-      const response = await fetch('https://faqchatbot-backend.onrender.com', {
+      const response = await fetch('https://faqchatbot-backend.onrender.com/api/faq', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
