@@ -1,0 +1,8 @@
+{
+    "appService.zipIgnorePattern": [
+        "node_modules{,/**}",
+        ".vscode{,/**}"
+    ],
+    "appService.defaultWebAppToDeploy": "/subscriptions/2dbefc3c-81a4-4e7e-8e65-288bcceced04/resourceGroups/FAQChatBot_group/providers/Microsoft.Web/sites/FAQChatBot",
+    "appService.deploySubpath": "backend"
+}
