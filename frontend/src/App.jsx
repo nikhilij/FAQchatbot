@@ -54,7 +54,7 @@ function App() {
     setChatHistory((prevHistory) => [...prevHistory, userMessage]);
 
     try {
-      const response = await fetch("https://faqchatbot-amf6hxcja0ekgkf7.canadacentral-01.azurewebsites.net/api/faq", {
+      const response = await fetch("https://faqchatbot-amf6hxcja0ekgkf7.westcentralus-01.azurewebsites.net/api/faq", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
