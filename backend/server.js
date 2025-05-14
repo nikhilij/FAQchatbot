@@ -14,14 +14,24 @@ require("dotenv").config();
 const port = process.env.PORT || 5000;
 
 // Middleware
+const app = express();
 app.use(cors()); // Applies the CORS middleware to your application, allowing requests from any origin.
 app.use(bodyParser.json());
+
+// Health check endpoint for Azure and local diagnostics
+app.get("/api/health", (req, res) => {
+  res.json({ status: "ok", time: new Date().toISOString() });
+});
 
 // Initialize Gemini API with updated SDK
 const apiKey = process.env.API_KEY;
 if (!apiKey) {
-  console.error("API_KEY not found in environment variables. Please check your .env file.");
+  console.error(
+    "API_KEY not found in environment variables. Please check your .env file or Azure App Service settings."
+  );
   process.exit(1);
+} else {
+  console.log("API_KEY loaded from environment variables.");
 }
 // Initialize the Google GenerativeAI client with API key
 const genAI = new GoogleGenerativeAI(apiKey);
