@@ -8,9 +8,20 @@ import { ThemeProvider } from "./contexts/ThemeProvider.jsx";
 
 function App() {
   const [question, setQuestion] = useState("");
-  const [chatHistory, setChatHistory] = useState([]);
+  const                   onKeyDown={(e)                  <button
+                    onClick={askQuestion}
+                    disabled={loading}
+                    className="h-full bg-white hover:bg-gray-100 text-primary-500 px-4 py-3 flex items-center justify-center transition-colors duration-200 disabled:opacity-50"
+                    aria-label="Send message"
+                  >                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      useStreaming ? askQuestionWithStreaming() : askQuestion();
+                    }
+                  }}istory, setChatHistory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [useStreaming, setUseStreaming] = useState(false);
+  const [streamingText, setStreamingText] = useState("");
   const chatEndRef = useRef(null);
 
   useEffect(() => {
@@ -56,7 +67,8 @@ function App() {
     setChatHistory((prevHistory) => [...prevHistory, userMessage]);
 
     try {
-      const response = await fetch("https://faqchatbot-amf6hxcja0ekgkf7.westcentralus-01.azurewebsites.net/api/faq", {
+      // Using the local backend with the updated Gemini 2.0 Flash implementation
+      const response = await fetch("http://localhost:5001/api/faq", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -85,6 +97,102 @@ function App() {
       setError("Failed to fetch answer. Please try again.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Function to handle streaming responses
+  const askQuestionWithStreaming = async () => {
+    if (!question.trim()) return;
+
+    setLoading(true);
+    setError("");
+    setStreamingText(""); // Reset streaming text
+
+    const timestamp = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const currentQuestion = question;
+
+    const userMessage = {
+      text: currentQuestion,
+      isUser: true,
+      timestamp,
+      id: Date.now(),
+    };
+
+    // Add user message immediately
+    setChatHistory((prevHistory) => [...prevHistory, userMessage]);
+
+    // Add a placeholder bot message that will be updated with streaming content
+    const botMessageId = Date.now() + 1;
+    const botMessage = {
+      text: "",
+      isUser: false,
+      timestamp,
+      id: botMessageId,
+      isStreaming: true, // Mark as streaming
+    };
+
+    setChatHistory((prevHistory) => [...prevHistory, botMessage]);
+    setQuestion(""); // Clear input
+
+    try {
+      // Using the SSE endpoint for streaming responses
+      const eventSource = new EventSource(`http://localhost:5001/api/faq-stream?question=${encodeURIComponent(currentQuestion)}`);
+      
+      eventSource.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        
+        if (data === "[DONE]") {
+          eventSource.close();
+          setLoading(false);
+          
+          // Update the final bot message when streaming is done
+          setChatHistory(prevHistory => 
+            prevHistory.map(msg => 
+              msg.id === botMessageId 
+                ? { ...msg, text: streamingText, isStreaming: false } 
+                : msg
+            )
+          );
+          return;
+        }
+        
+        if (data.chunk) {
+          setStreamingText(prev => {
+            const newText = prev + data.chunk;
+            
+            // Update the bot message as new chunks arrive
+            setChatHistory(prevHistory => 
+              prevHistory.map(msg => 
+                msg.id === botMessageId 
+                  ? { ...msg, text: newText } 
+                  : msg
+              )
+            );
+            
+            return newText;
+          });
+        }
+      };
+      
+      eventSource.onerror = () => {
+        console.error("SSE error");
+        eventSource.close();
+        setLoading(false);
+        setError("Error in streaming response. Please try again.");
+      };
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      setError("Failed to fetch streaming answer. Please try again.");
+      setLoading(false);
+    }
+  };
+
+  // Modified askQuestion function to use either streaming or regular mode
+  const handleAskQuestion = () => {
+    if (useStreaming) {
+      askQuestionWithStreaming();
+    } else {
+      askQuestion();
     }
   };
 
@@ -357,7 +465,7 @@ function App() {
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
-                      askQuestion();
+                      handleAskQuestion();
                     }
                   }}
                   disabled={loading}
@@ -382,7 +490,7 @@ function App() {
                 <VoiceInput onTranscript={(text) => setQuestion((prev) => prev + text)} />
                 <div className="border-l border-gray-200">
                   <button
-                    onClick={askQuestion}
+                    onClick={handleAskQuestion}
                     disabled={loading}
                     className="h-full bg-white hover:bg-gray-100 text-primary-500 px-4 py-3 flex items-center justify-center transition-colors duration-200 disabled:opacity-50"
                     aria-label="Send message"
